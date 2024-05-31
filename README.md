@@ -5,6 +5,9 @@ This thing is easy on memory, uses 25 rounds and passes dieharder, ent, NIST and
 
 It seems suitable for very low power devices: 3 by 5 but also 5 by 4 rounds do produce random data. The avalanche property holds already for 3 by 3 rounds, which seem little for a 128 bit key.
 
+# NIST and AIS31 standard tests for 3 by 5:
+PASSED
+
 # dieharder tests for 3 by 5:
 =============================================================================#
             dieharder version 3.31.1 Copyright 2003 Robert G. Brown          #
