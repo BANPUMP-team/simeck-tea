@@ -207,5 +207,17 @@ Preparing to run test 208.  ntuple = 0
        dab_filltree2|   1|   5000000|       1|0.21390197|  PASSED  
 Preparing to run test 209.  ntuple = 0
  The file file_input_raw was rewound 229 times
-        dab_monobit2|  12|  65000000|       1|0.51619264|  PASSED  
+        dab_monobit2|  12|  65000000|       1|0.51619264|  PASSED 
+#ENT entropy test:
+Entropy = 8.000000 bits per byte.
+
+Optimum compression would reduce the size
+of this 1073741824 byte file by 0 percent.
+
+Chi square distribution for 1073741824 samples is 270.20, and randomly
+would exceed this value 24.53 percent of the times.
+
+Arithmetic mean value of data bytes is 127.5006 (127.5 = random).
+Monte Carlo value for Pi is 3.141530682 (error 0.00 percent).
+Serial correlation coefficient is 0.000061 (totally uncorrelated = 0.0).
 
