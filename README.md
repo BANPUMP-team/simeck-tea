@@ -14,14 +14,6 @@ It seems suitable for very low power devices. The avalanche property holds alrea
     zero.enc PASS 257/257 257/257 257/257 257/257 257/257 PASS PASS PASS PASS 8.00131
 
 # dieharder tests for 3 by 5:
-=============================================================================#
-            dieharder version 3.31.1 Copyright 2003 Robert G. Brown          #
-=============================================================================#
-   rng_name    |           filename             |rands/second|
- file_input_raw|                        zero.enc|  6.41e+07  |
-=============================================================================#
-        test_name   |ntup| tsamples |psamples|  p-value |Assessment
-=============================================================================#
    diehard_birthdays|   0|       100|     100|0.42416284|  PASSED  
       diehard_operm5|   0|   1000000|     100|0.90396219|  PASSED  
   diehard_rank_32x32|   0|     40000|     100|0.25671649|  PASSED  
