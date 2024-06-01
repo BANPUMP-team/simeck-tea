@@ -208,7 +208,7 @@ Preparing to run test 208.  ntuple = 0
 Preparing to run test 209.  ntuple = 0
  The file file_input_raw was rewound 229 times
         dab_monobit2|  12|  65000000|       1|0.51619264|  PASSED 
-#ENT entropy test:
+# ENT entropy test:
 Entropy = 8.000000 bits per byte.
 
 Optimum compression would reduce the size
