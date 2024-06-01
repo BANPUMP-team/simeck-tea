@@ -3,7 +3,9 @@ SIMECK-TEA is a configurable lightweight cipher made of 3 default rounds of SIME
 
 This thing is easy on memory, uses 15 rounds and passes dieharder, ent, NIST and AIS31 randomness tests.
 
-It seems suitable for very low power devices. The avalanche property holds already for 3 by 3 rounds.
+It seems suitable for very low power devices. The avalanche property holds for 3 by 3 rounds.
+
+This implementation does not require libargon2 for key derivation, being envisioned for embedded devices or IoT.
 
 # NIST standard tests for 3 by 5:
     188/188 tests passed successfully both the analyses.
