@@ -221,7 +221,7 @@ Arithmetic mean value of data bytes is 127.5006 (127.5 = random).
 Monte Carlo value for Pi is 3.141530682 (error 0.00 percent).
 Serial correlation coefficient is 0.000061 (totally uncorrelated = 0.0).
 
-# Avalanche test for 1 bit flip in the or within the plaintext
+# Avalanche test for 1 bit flip in the password or within the plaintext
 This test verifies how many bits are flipped in the ciphertext when a SINGLE random bit is flipped inside a randomly-chosen password OR when a SINGLE random bit is flipped inside a randomly-chosen plaintext.
 
 Progress: 1000000/1000000000 iterations
