@@ -1,12 +1,17 @@
 # simeck-tea
-SIMECK-TEA is a configurable lightweight cipher made of 5 default rounds of SIMECK64 and 5 internal TEA rounds.
+SIMECK-TEA is a configurable lightweight cipher made of 3 default rounds of SIMECK64 and 5 internal TEA rounds.
 
 This thing is easy on memory, uses 25 rounds and passes dieharder, ent, NIST and AIS31 randomness tests.
 
-It seems suitable for very low power devices: 3 by 5 but also 5 by 4 rounds do produce random data. The avalanche property holds already for 3 by 3 rounds, which seem little for a 128 bit key.
+It seems suitable for very low power devices. The avalanche property holds already for 3 by 3 rounds.
 
-# NIST and AIS31 standard tests for 3 by 5:
-PASSED
+# NIST standard tests for 3 by 5:
+    188/188 tests passed successfully both the analyses.
+    0/188 tests did not pass successfully both the analyses.
+
+# AIS31 standard tests for 3 by 5:
+    input file A-T0 A-T1 A-T2 A-T3 A-T4 A-T5 B-Step1(T6) B-Step2 B-Step3 B-Step4 B-T8 
+    zero.enc PASS 257/257 257/257 257/257 257/257 257/257 PASS PASS PASS PASS 8.00131
 
 # dieharder tests for 3 by 5:
 =============================================================================#
