@@ -208,7 +208,7 @@ Preparing to run test 208.  ntuple = 0
 Preparing to run test 209.  ntuple = 0
  The file file_input_raw was rewound 229 times
         dab_monobit2|  12|  65000000|       1|0.51619264|  PASSED 
-# ENT entropy test:
+# ENT entropy test for 3 by 5
 Entropy = 8.000000 bits per byte.
 
 Optimum compression would reduce the size
@@ -221,7 +221,7 @@ Arithmetic mean value of data bytes is 127.5006 (127.5 = random).
 Monte Carlo value for Pi is 3.141530682 (error 0.00 percent).
 Serial correlation coefficient is 0.000061 (totally uncorrelated = 0.0).
 
-# Avalanche test for 1 bit flip in the password or within the plaintext
+# Avalanche test for 1 bit flip in the password or within the plaintext for 3 by 5
 This test verifies how many bits are flipped in the ciphertext when a SINGLE random bit is flipped inside a randomly-chosen password OR when a SINGLE random bit is flipped inside a randomly-chosen plaintext.
 
 Progress: 1000000/1000000000 iterations
