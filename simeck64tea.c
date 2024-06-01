@@ -13,6 +13,7 @@
 // Example of how to use
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,9 +23,9 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#include <argon2.h> /* libargon2 */
-#define ARGON_HASHLEN 32
-#define ARGON_SALTLEN 16
+/* you may define these two strings as you wish in order to describe your product */
+#define PRODUCTSERIALNO "SN:MAC:ADDDR:part"
+#define PRODUCTVERSION "1st-of-June-2024-b6"
 
 #define MAXPWDLEN 32
 
@@ -36,19 +37,69 @@
     rgt = (tmp); \
 } while (0)
 
+
 void split_uint64_to_uint32(uint64_t value, uint32_t *result) {
-    union {
-        uint64_t value64;
-        uint32_t value32[2];
-    } u;
-    u.value64 = value;
-    result[0] = u.value32[0];
-    result[1] = u.value32[1];
+    result[0] = (uint32_t)((value >> 32) & 0xFFFFFFFF); // Upper 32 bits
+    result[1] = (uint32_t)(value & 0xFFFFFFFF);       // Lower 32 bits
 }
 
-void simeckTeaCTR(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[], 
-		int simeckrounds, int tearounds) {
-    int idx;
+
+uint64_t combine_uint32_to_uint64(const uint32_t *values) {
+    return ((uint64_t)values[0] << 32) | values[1]; // Combine upper and lower 32 bits
+}
+
+void simeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) { 
+    int idx, simeckrounds = 3, tearounds = 5;
+    uint32_t keys[4] = {
+        master_key[0],
+        master_key[1],
+        master_key[2],
+        master_key[3],
+    };
+    ciphertext[0] = plaintext[0];
+    ciphertext[1] = plaintext[1];
+    uint32_t temp;
+
+    uint32_t constant = 0xFFFFFFFC;
+    uint64_t sequence = 0x938BCA3083F;
+
+    for (idx = 0; idx < simeckrounds; idx++) {
+        ROUND64(
+                keys[0],
+                ciphertext[1],
+                ciphertext[0],
+                temp
+        );
+
+        constant &= 0xFFFFFFFC;
+        constant |= sequence & 1;
+        sequence >>= 1;
+        ROUND64(
+                constant,
+                keys[1],
+                keys[0],
+                temp
+        );
+
+        // rotate the LFSR of keys
+        temp = keys[1];
+        keys[1] = keys[2];
+        keys[2] = keys[3];
+        keys[3] = temp;
+
+	uint32_t y=ciphertext[0], z=ciphertext[1], sum=0, delta=0x9e3779b9; /* a key schedule constant */
+        while (tearounds-->0) { /* basic cycle start */
+            sum += delta;
+            y += ((z<<4) + keys[0]) ^ (z+sum) ^ ((z>>5) + keys[1]);
+            z += ((y<<4) + keys[2]) ^ (y+sum) ^ ((y>>5) + keys[3]);
+        } /* end cycle */
+        ciphertext[0]=y; ciphertext[1]=z; 
+    }
+}
+
+
+void simeckTeaCTR(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) { 
+    int idx, simeckrounds = 3, tearounds = 5;
     static uint64_t cnt = 0;
     uint32_t plain[2];
     split_uint64_to_uint32(cnt, plain);
@@ -103,6 +154,70 @@ void simeckTeaCTR(const uint32_t master_key[], const uint32_t plaintext[], uint3
     cnt++; // counter mode..
 }
 
+
+// MDC-2 hash function using TEA cipher for encryption
+void MDC2_Hash(const uint8_t *data, size_t len, uint32_t *hash, const uint32_t *key) {
+    uint32_t Pt[2] = {0}; // Plaintext block
+    uint32_t Ct[2] = {0}; // Ciphertext block
+    uint32_t K1 = 0, K2 = 0;
+    size_t i, j;
+
+    for (i = 0; i < len; i++) {
+        Pt[i % 2] ^= (uint32_t)data[i] << ((i % 2) * 8);
+        if ((i + 1) % 2 == 0) {
+	    simeckTeaECB(key, Pt, Ct); 
+            K1 ^= Ct[0];
+            K2 ^= Ct[1];
+            Pt[0] = 0;
+            Pt[1] = 0;
+        }
+    }
+
+    // Final round if there are remaining bytes
+    if (len % 2 != 0) {
+	simeckTeaECB(key, Pt, Ct); 
+        K1 ^= Ct[0];
+        K2 ^= Ct[1];
+    }
+
+    // Additional post-processing can be done if needed
+    for (j = 0; j < 16; j++) {
+	K1 += ((K2 & 3) * 0x9e3779b9) ^ ((K2 >> 5) + 0x9e3779b9);
+        K2 += ((K1 & 3) * 0x9e3779b9) ^ ((K1 >> 5) + 0x9e3779b9);
+    }
+
+    hash[0] = K1;
+    hash[1] = K2;
+}
+
+
+// PBKDF2 key derivation function 
+void PBKDF2_SIMECKTEA(const char *password, size_t password_len, const uint8_t *salt, size_t salt_len, uint32_t *key, size_t iterations) {
+    uint32_t result[2] = {0};
+    uint32_t temp[2];
+    uint8_t temp_buffer[4 + salt_len + 4];
+    size_t i;
+
+    // Iterate through each block to derive the key
+    for (i = 1; i <= iterations; i++) {
+        // Prepare data for hash computation
+        memcpy(temp_buffer, &i, sizeof(uint32_t)); // Block index
+        memcpy(temp_buffer + sizeof(uint32_t), salt, salt_len); // Salt
+        memcpy(temp_buffer + sizeof(uint32_t) + salt_len, &i, sizeof(uint32_t)); // Block index (again)
+
+        // Perform hash computation
+        MDC2_Hash(temp_buffer, sizeof(temp_buffer), temp, (const uint32_t *)password);
+
+        // XOR result with temporary hash
+        result[0] ^= temp[0];
+        result[1] ^= temp[1];
+    }
+
+    // Copy the result to the key
+    memcpy(key, result, 2 * sizeof(uint32_t));
+}
+
+
 int isStrongPassword(const char *password) {
     int length = strlen(password);
 
@@ -129,28 +244,30 @@ int isStrongPassword(const char *password) {
     return length >= 10 && hasUpper && hasLower && hasDigit && hasSpecial;
 }
 
-void copy_bytes_to_uint32(const uint8_t *source, uint32_t *destination, size_t elements) {
-    typedef union {
-        uint32_t value;
-	uint8_t parts[4];
-    } CopyUnion;
-	
-    for (size_t i = 0; i < elements; ++i) {
-        CopyUnion u;
 
-	for (int j = 0; j < 4; ++j) {
-	    u.parts[j] = source[i * 4 + j]; // Copy 4 bytes at a time
-	}
 
-	destination[i] = u.value;
-    }
+void PBKDF2(char *passwd, uint32_t *derived_key, size_t iterations) {
+    uint32_t strongpwd1[2], strongpwd2[2];
+    int pwdlen;
+
+    pwdlen = strlen(passwd);
+
+    /* the PRODUCTSERIALNO and PRODUCTVERSION strings are used to salt the password into a stronger version */
+    PBKDF2_SIMECKTEA(passwd, pwdlen, (uint8_t *) PRODUCTSERIALNO, strlen(PRODUCTSERIALNO), strongpwd1, iterations); // output 64 bits = 2 x uint32_t values
+    PBKDF2_SIMECKTEA(passwd, pwdlen, (uint8_t *) PRODUCTVERSION, strlen(PRODUCTVERSION), strongpwd2, iterations); // output 64 bits = 2 x uint32_t values
+
+    // copy strong passwords into derived_key 128 bits
+    derived_key[0] = strongpwd1[0];
+    derived_key[1] = strongpwd1[1];
+    derived_key[2] = strongpwd2[0];
+    derived_key[3] = strongpwd2[1];												   
 }
+
 
 int main(int argc, char *argv[]) {
     // get input file and out file names
-	if (argc != 5) {
-		fprintf(stderr, "Usage: %s input-filename output-filename #simeckrounds #tearounds\n", argv[0]);
-		fprintf(stderr, "          good randomness at 5 external rounds by 5 internal rounds\n");
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s input-filename output-filename\n", argv[0]);
 		return 0;
     }
 
@@ -184,19 +301,14 @@ int main(int argc, char *argv[]) {
 	return (10);
     }	 
 
-    // expand password to 128 bits
-    uint32_t t_cost = 20;       // 2-pass computation
-    uint32_t m_cost = (1<<16);  // 64mb memory usage
-    uint32_t parallelism = 1;   // number of threads
+    PBKDF2(passwd, derived_key, 65000); 
 
-    uint8_t hash[ARGON_HASHLEN];
-    uint8_t salt[ARGON_SALTLEN];
-    memset(salt, 0x00, ARGON_SALTLEN);
-
-    argon2i_hash_raw(t_cost, m_cost, parallelism, passwd, pwdlen, salt, ARGON_SALTLEN, hash, ARGON_HASHLEN);
-    copy_bytes_to_uint32(hash, derived_key, 4);         // 4 * 32 = 128 bits
-
-
+    // Print each uint32_t value in hexadecimal format in the derived_key array
+    printf("Derived Key (Hexadecimal):\n");
+    for (int i = 0; i < 4; i++) {
+        printf("Value %d: 0x%08X\n", i + 1, derived_key[i]);
+    }
+    
     // read input file
     FILE *fp, *fpout;
     off_t fsize = statbuf.st_size;
@@ -212,14 +324,7 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t plaintext[2], ciphertext[2];
-    uint32_t simeckrounds = strtol(argv[3], NULL, 10);
-    uint32_t tearounds = strtol(argv[4], NULL, 10);
 
-    if ((simeckrounds > 44) || (tearounds > 32)) {
-	fprintf(stderr, "Simeckrounds maximum value is 44, Tearounds maximum value is 32, try 5 by 5\n");
-	exit(EXIT_FAILURE);
-    }
-    
     int ret = 8;
     while(ret == 8) {
        if ((ret = fread(plaintext, 1, 8, fp))==0) { // read 64 bits
@@ -229,7 +334,7 @@ int main(int argc, char *argv[]) {
 	        }
         }
 
-        simeckTeaCTR(derived_key, plaintext, ciphertext, simeckrounds, tearounds);
+        simeckTeaCTR(derived_key, plaintext, ciphertext);
 
         if (fwrite(ciphertext, 8, 1, fpout)!=1) { // write 64 bits of ciphertext
             perror("fwrite()");
@@ -247,4 +352,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
