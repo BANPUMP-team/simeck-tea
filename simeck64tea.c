@@ -2,7 +2,7 @@
  *
  *      (C) 2024 Alin-Adrian Anton <alin.anton@cs.upt.ro>
  *
- *      A 5 by 5 configuration passes dieharder, ent, NIST and AIS31 randomness tests.
+ *      A 3 by 5 configuration passes dieharder, ent, NIST and AIS31 randomness tests.
  *
  * 	Using MIT licensed code from Bo Zhu for SIMECK64 https://github.com/bozhu/Simeck paper https://eprint.iacr.org/2015/612.pdf
  * 	and TEA sample from David Wheeler's and Roger Needham's paper https://link.springer.com/content/pdf/10.1007/3-540-60590-8_29.pdf
