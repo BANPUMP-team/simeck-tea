@@ -37,8 +37,8 @@
     rgt = (tmp); \
 } while (0)
 
-uint8_t psum, tsum;
-uint8_t pmul, tmul;
+uint8_t psum;
+uint8_t pmul;
 
 void split_uint64_to_uint32(uint64_t value, uint32_t *result) {
     result[0] = (uint32_t)((value >> 32) & 0xFFFFFFFF); // Upper 32 bits
@@ -51,7 +51,7 @@ uint64_t combine_uint32_to_uint64(const uint32_t *values) {
 }
 
 void simeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) { 
-    int idx, simeckrounds = 3, tearounds = 5;
+    int idx, simeckrounds = 4, tearounds = 6;
     uint32_t keys[4] = {
         master_key[0],
         master_key[1],
@@ -118,14 +118,8 @@ void simeckTeaCTR(const uint32_t master_key[], const uint32_t plaintext[], uint3
     uint32_t constant = 0xFFFFFFFC;
     uint64_t sequence = 0x938BCA3083F;
 
-    for (i=0;i<2;i++) {
-	tsum += plaintext[i]; // overflows by design
-	tmul ^= plaintext[i]; // overflows by design
-    }
-    tsum = tsum % 5;
-    tmul = tmul % 5;
-    simeckrounds = simeckrounds + psum + tmul; // depends on both password and plaintext
-    tearounds = tearounds + pmul + tsum; // depends on both passowrd and plaintext
+    simeckrounds = simeckrounds + psum; // depends on password
+    tearounds = tearounds + pmul; // depends on password
 
     for (idx = 0; idx < simeckrounds; idx++) {
         ROUND64(
@@ -314,7 +308,7 @@ int main(int argc, char *argv[]) {
     PBKDF2(passwd, derived_key, 65000); 
 
     psum=0; pmul=1;
-    tsum=0; tmul=1;
+
     // Print each uint32_t value in hexadecimal format in the derived_key array
     printf("Derived Key (Hexadecimal):\n");
     for (int i = 0; i < 4; i++) {
