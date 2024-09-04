@@ -23,6 +23,12 @@
 #include <unistd.h>
 #include <ctype.h>
 
+#include <utime.h>
+#include <fcntl.h>
+#include <errno.h>
+
+
+
 /* you may define these two strings as you wish in order to describe your product */
 #define PRODUCTSERIALNO "SN:MAC:ADDDR:part"
 #define PRODUCTVERSION "1st-of-June-2024-b6"
@@ -39,6 +45,85 @@
 
 uint8_t psum;
 uint8_t pmul;
+uint64_t IV; // initialization vector for block counter mode (CTR)
+uint64_t cnt = 0; // couter for CTR mode
+
+/* 
+ * code snippets for pseudorandom number generator from Numerical Recipes by William H. Press, Saul A. Teukolsky,
+ *      William T. Vetterling and Brian P. Flannery.
+ */
+
+uint64_t v = 4101842887655102017LL;
+uint64_t vv = 2685821657736338717LL;
+
+uint64_t int64() {
+	v ^= v >> 21; 
+	v ^= v << 35; 
+	v ^= v >> 4;
+	return v * vv;
+}
+
+uint32_t Random32(uint64_t seed) {
+	v ^= seed;
+	v = int64();
+
+	return (uint32_t) v;
+}
+
+
+void seed(uint64_t seed) {
+	Random32(seed);
+}
+
+uint32_t int32() { 
+	return (uint32_t) int64(); 
+} 
+
+
+uint64_t Random64(uint64_t seed) {
+	v ^= seed;
+	v = int64();
+
+	return v;
+}
+
+double RandomDouble() { 
+	return 5.42101086242752217E-20 * int64(); 
+}
+
+/* 
+ * Fowler–Noll–Vo hash 1a for output file filename
+ */
+
+uint64_t fnv1a_hash(const char *data, size_t length) {
+    uint64_t hash = 0xcbf29ce484222325ULL; // FNV-1a 64-bit offset basis
+    uint64_t prime = 0x100000001b3ULL;     // FNV-1a 64-bit prime
+
+    for (size_t i = 0; i < length; i++) {
+        hash ^= (uint8_t)data[i];  // XOR with the byte from the data
+        hash *= prime;             // Multiply by the FNV prime
+    }
+
+    return hash;
+}
+
+
+void print_error(const char *message) {
+    perror(message);
+    exit(EXIT_FAILURE);
+}
+
+
+void get_modification_time_string(const struct timespec *mod_time, char *time_str, size_t max_len) {
+    struct tm *tm_info = localtime(&mod_time->tv_sec);
+    strftime(time_str, max_len, "%Y-%m-%d %H:%M:%S", tm_info);
+    snprintf(time_str + strlen(time_str), max_len - strlen(time_str), ".%09ld", mod_time->tv_nsec);
+}
+
+void print_modification_time(const char *time_str) {
+    printf("Modification time: %s\n", time_str);
+}
+
 
 void split_uint64_to_uint32(uint64_t value, uint32_t *result) {
     result[0] = (uint32_t)((value >> 32) & 0xFFFFFFFF); // Upper 32 bits
@@ -101,7 +186,6 @@ void simeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint3
 
 void simeckTeaCTR(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) { 
     int i, idx, simeckrounds = 4, tearounds = 6;
-    static uint64_t cnt = 0;
     uint32_t plain[2];
     split_uint64_to_uint32(cnt, plain);
 
@@ -287,6 +371,25 @@ int main(int argc, char *argv[]) {
     uint32_t derived_key[4];
     struct termios original,noecho;
 
+    // Get the modification time from source file
+    struct timespec mod_time = statbuf.st_mtim;
+
+    // Convert modification time to string
+    char mod_time_str[100];
+    get_modification_time_string(&mod_time, mod_time_str, sizeof(mod_time_str));
+
+    // Print the modification time
+    print_modification_time(mod_time_str);
+
+    IV = fnv1a_hash(mod_time_str, strlen(mod_time_str));
+
+    // Prepare the times to set on the destination file
+    struct timespec new_times[2];
+    new_times[0].tv_sec = statbuf.st_atim.tv_sec;  // Access time (seconds)
+    new_times[0].tv_nsec = statbuf.st_atim.tv_nsec;  // Access time (nanoseconds)
+    new_times[1].tv_sec = statbuf.st_mtim.tv_sec;  // Modification time (seconds)
+    new_times[1].tv_nsec = statbuf.st_mtim.tv_nsec;  // Modification time (nanoseconds)
+
     tcgetattr(STDIN_FILENO, &original);
     noecho = original;
     noecho.c_lflag = noecho.c_lflag ^ ECHO;
@@ -307,7 +410,7 @@ int main(int argc, char *argv[]) {
 
     PBKDF2(passwd, derived_key, 65000); 
 
-    psum=0; pmul=1;
+    psum=0; pmul=1; 
 
     // Print each uint32_t value in hexadecimal format in the derived_key array
     printf("Derived Key (Hexadecimal):\n");
@@ -334,8 +437,24 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    uint32_t plaintext[2], ciphertext[2];
+    int i,len;
+    char *ptrdot;
+    ptrdot = strrchr(argv[2], '.'); // drop the .extension
+    if (ptrdot == NULL) {
+	fprintf(stderr, "The output filename is expected to have an .extension suffix\n");
+	return -1;
+    }
+    len = (ptrdot-argv[2]) * sizeof(char);
+    IV += fsize + psum + pmul + fnv1a_hash(argv[2], len);
+    seed(IV);
+    for (i=0; i< psum+pmul; i++) {
+	    IV = int64();
+    }
 
+    printf("The IV is %lu with this one\n", IV);
+
+    uint32_t plaintext[2], ciphertext[2];
+    
     int ret = 8;
     while(ret == 8) {
        if ((ret = fread(plaintext, 1, 8, fp))==0) { // read 64 bits
@@ -360,6 +479,14 @@ int main(int argc, char *argv[]) {
 	    perror("truncate() output file");
 	    exit(EXIT_FAILURE);
     }
+
+    // Set the modification time on the destination file using utimensat
+    if (utimensat(AT_FDCWD, argv[2], new_times, 0) != 0) {
+        print_error("Failed to set modification time");
+    }
+
+    printf("Modification time copied from '%s' to '%s'\n", argv[1], argv[2]);
+
 
     return 0;
 }
