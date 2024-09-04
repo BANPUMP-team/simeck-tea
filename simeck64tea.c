@@ -412,10 +412,7 @@ int main(int argc, char *argv[]) {
 
     psum=0; pmul=1; 
 
-    // Print each uint32_t value in hexadecimal format in the derived_key array
-    printf("Derived Key (Hexadecimal):\n");
     for (int i = 0; i < 4; i++) {
-        printf("Value %d: 0x%08X\n", i + 1, derived_key[i]);
 	psum += derived_key[i]; // overflows by design
 	pmul ^= derived_key[i]; // overflows by design
     }
