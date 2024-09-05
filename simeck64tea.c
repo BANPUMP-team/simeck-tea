@@ -136,7 +136,7 @@ uint64_t combine_uint32_to_uint64(const uint32_t *values) {
 }
 
 void simeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) { 
-    int idx, simeckrounds = 4, tearounds = 6;
+    int idx, simeckrounds = 5, tearounds = 7;
     uint32_t keys[4] = {
         master_key[0],
         master_key[1],
@@ -185,7 +185,7 @@ void simeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint3
 }
 
 void simeckTeaCTR(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) { 
-    int i, idx, simeckrounds = 4, tearounds = 6;
+    int i, idx, simeckrounds = 5, tearounds = 7;
     uint32_t plain[2];
     split_uint64_to_uint32(cnt, plain);
 
