@@ -1,4 +1,4 @@
-# simeck-tea
+# simeck-tea (SmackTEA)
 SIMECK-TEA is a configurable lightweight cipher made of 3 default rounds of SIMECK64 and 5 internal TEA rounds.
 
 This thing is easy on memory, uses 15 rounds and passes dieharder, ent, NIST and AIS31 randomness tests.
