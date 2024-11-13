@@ -53,7 +53,7 @@ double RandomDouble() {
 }
 
 void SimeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) {
-    int idx, simeckrounds = 1, tearounds = 1;  // 3 by 5
+    int idx, simeckrounds = 3, tearounds = 5;  // 3 by 5
     uint32_t keys[4] = {
         master_key[0],
         master_key[1],
