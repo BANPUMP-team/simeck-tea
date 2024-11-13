@@ -416,9 +416,6 @@ int main(int argc, char *argv[]) {
 	SimeckTeaECB(key, plaintext1, ciphertext1);
 	SimeckTeaECB(key, plaintext2, ciphertext2);
 
-//        TEA_encrypt(ciphertext1, key, rounds);
-//        TEA_encrypt(ciphertext2, key, rounds);
-
         // Compute the output difference ΔC using the selected function
         compute_difference(output_diff, ciphertext1, ciphertext2);
 
