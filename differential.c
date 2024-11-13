@@ -18,7 +18,7 @@
 typedef void (*compute_diff_func)(uint32_t result[2], const uint32_t v1[2], const uint32_t v2[2]);
 
 void SimeckTeaECB(const uint32_t master_key[], const uint32_t plaintext[], uint32_t ciphertext[]) {
-    int idx, simeckrounds = 1, tearounds = 1; // Adjust as needed 3 by 5
+    int idx, simeckrounds = 3, tearounds = 5; // Adjust as needed 3 by 5
     uint32_t keys[4] = {
         master_key[0],
         master_key[1],
